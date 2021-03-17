@@ -35,13 +35,15 @@ function init() {
           function next() {
             if(step >= total) {
                 const textarea = document.createElement('textarea');
-                textarea.innerHTML = svgContainer.childNodes[0].outerHTML
-                    .replaceAll('attributename', 'attributeName')
-                    .replaceAll('calcmode', 'calcMode')
-                    .replaceAll('keytimes', 'keyTimes')
-                    .replaceAll('animatetransform', 'animateTransform')
-                    .replaceAll('attributetype', 'attributeType')
-                    .replaceAll('animatetransform', 'animateTransform')
+                const newSvg = svgContainer.childNodes[0].outerHTML
+                .replaceAll('attributename', 'attributeName')
+                .replaceAll('calcmode', 'calcMode')
+                .replaceAll('keytimes', 'keyTimes')
+                .replaceAll('animatetransform', 'animateTransform')
+                .replaceAll('attributetype', 'attributeType')
+                .replaceAll('animatetransform', 'animateTransform')
+                textarea.innerHTML = newSvg
+                svgContainer.innerHTML = newSvg
                 document.body.appendChild(textarea)
                 return
             }
@@ -62,24 +64,82 @@ function init() {
 
           const observer = new MutationObserver((mutationsList) => {
             for(const mutation of mutationsList) {
-                const oldAnimate = svgContainer.querySelector(`animate[href="#${mutation.target.id}"][attributename="${mutation.attributeName}"]`)
+                if(mutation.attributeName === 'transform' && mutation.target.getAttribute(mutation.attributeName).includes('matrix')) {
 
-                if(oldAnimate) {
-                    if(oldAnimate.getAttribute('values') === null) console.log(oldAnimate.getAttributeNames())
-                    oldAnimate.setAttribute('values', oldAnimate.getAttribute('values') + ';' + mutation.target.getAttribute(mutation.attributeName))
-                    oldAnimate.setAttribute('keytimes', oldAnimate.getAttribute('keytimes') + ';' + step / total)
-                } else if(mutation.target.getAttribute(mutation.attributeName) === null) console.log(mutation)
-                    const animation = document.createElement('animate')
-                    animation.setAttribute('begin', step * frameDur + 'ms');
-                    animation.setAttribute('href', '#' + mutation.target.id)
-                    animation.setAttribute('attributeName', mutation.attributeName)
-                    animation.setAttribute('values', mutation.target.getAttribute(mutation.attributeName))
-                    animation.setAttribute('keytimes', 0)
-                    animation.setAttribute('calcMode', 'discrete')
-                    animation.setAttribute('fill', 'freeze')
-                    animation.setAttribute('dur', `${total * frameDur}ms`)
-                    svgContainer.childNodes[0].appendChild(animation)
+                    const matrix = mutation.target.getAttribute(mutation.attributeName)
+                    .replace('matrix(', '').replace(')', '').split(',')
+
+                    const [a,c,d,b,tx,ty] = matrix;
+
+
+                    const translate = [tx, ty]
+
+                    const sx = Math.sqrt(Math.pow(a,2) + Math.pow(c,2))
+                    const sy = Math.sqrt(Math.pow(b,2) + Math.pow(d,2))
+
+                    const scale = [sx, sy]
+
+                    const oldTranslate = svgContainer.querySelector(`animatetransform[href="#${mutation.target.id}"][attributename="${mutation.attributeName}"][type="translate"]`)
+
+                    if(oldTranslate) {
+                        oldTranslate.setAttribute('values', oldTranslate.getAttribute('values') + ';' + translate.join(','))
+                        oldTranslate.setAttribute('keytimes', oldTranslate.getAttribute('keytimes') + ';' + step / total)
+                    } else {
+                        const translateEl = document.createElement('animateTransform')
+                        translateEl.setAttribute('attributeName', mutation.attributeName)
+                        translateEl.setAttribute('values', translate.join(','))
+                        translateEl.setAttribute('keytimes', 0)
+                        translateEl.setAttribute('begin', `${step * frameDur}ms`)
+                        translateEl.setAttribute('href', '#' + mutation.target.id)
+                        translateEl.setAttribute('fill', 'freeze')
+                        translateEl.setAttribute('type', 'translate')
+                        translateEl.setAttribute('attributeType', 'XML')
+                        translateEl.setAttribute('dur', `${total * frameDur}ms`)
+                        svgContainer.childNodes[0].appendChild(translateEl) 
+                    }
+
+                    const oldScale = svgContainer.querySelector(`animatetransform[href="#${mutation.target.id}"][attributename="${mutation.attributeName}"][type="scale"]`)
+
+                    if(oldScale) {
+                        oldScale.setAttribute('values', oldScale.getAttribute('values') + ';' + scale.join(' '))
+                        oldScale.setAttribute('keytimes', oldScale.getAttribute('keytimes') + ';' + step / total)
+                    } else {
+                        const scaleEl = document.createElement('animateTransform')
+                        scaleEl.setAttribute('attributeName', mutation.attributeName)
+                        scaleEl.setAttribute('values', scale.join(' '))
+                        scaleEl.setAttribute('keytimes', 0)
+                        scaleEl.setAttribute('begin', `${step * frameDur}ms`)
+                        scaleEl.setAttribute('href', '#' + mutation.target.id)
+                        scaleEl.setAttribute('fill', 'freeze')
+                        scaleEl.setAttribute('type', 'scale')
+                        scaleEl.setAttribute('attributeType', 'XML')
+                        scaleEl.setAttribute('dur', `${total * frameDur}ms`)
+                        svgContainer.childNodes[0].appendChild(scaleEl)
+                    }
+
+                } else {
+
+                    const oldAnimate = svgContainer.querySelector(`animate[href="#${mutation.target.id}"][attributename="${mutation.attributeName}"]`)
+                    console.log(mutation.target.id,svgContainer.querySelector(`animate[href="#${mutation.target.id}"]`))
+                    if(oldAnimate) {
+                        console.log('oldAnimate', oldAnimate.id)
+                        oldAnimate.setAttribute('values', oldAnimate.getAttribute('values') + ';' + mutation.target.getAttribute(mutation.attributeName))
+                        oldAnimate.setAttribute('keytimes', oldAnimate.getAttribute('keytimes') + ';' + step / total)
+                    } else {
+                        const animation = document.createElement('animate')
+                        animation.setAttribute('begin', step * frameDur + 'ms');
+                        animation.setAttribute('href', '#' + mutation.target.id)
+                        animation.setAttribute('attributeName', mutation.attributeName)
+                        animation.setAttribute('values', mutation.target.getAttribute(mutation.attributeName))
+                        animation.setAttribute('keytimes', 0)
+                        animation.setAttribute('calcMode', 'discrete')
+                        animation.setAttribute('fill', 'freeze')
+                        animation.setAttribute('dur', `${total * frameDur}ms`)
+                        svgContainer.childNodes[0].appendChild(animation)
+                    }
+
                 }
+            }
           });
 
           observer.observe(lottieContainer, { attributes: true,  subtree: true });
