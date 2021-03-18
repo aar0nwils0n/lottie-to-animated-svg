@@ -118,6 +118,9 @@ function init() {
 
                     } else if (mutation.attributeName === 'transform' && mutation.target.getAttribute(mutation.attributeName).includes('matrix')) {
 
+
+                        svgContainer.querySelector('#' + mutation.target.id).removeAttribute('transform')
+
                         const matrix = mutation.target.getAttribute(mutation.attributeName)
                             .replace('matrix(', '').replace(')', '').split(',')
 
